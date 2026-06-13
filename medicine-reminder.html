@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>お薬リマインダー</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif;
+    background: #f0f4ff;
+    color: #333;
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100vh;
+  }
+
+  header {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    padding: 20px 16px 16px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  header h1 { font-size: 20px; font-weight: 700; }
+  header p { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+
+  .section { padding: 16px; }
+  .section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+  }
+
+  /* 今日のサマリー */
+  .today-summary {
+    background: white;
+    border-radius: 16px;
+    padding: 14px 16px;
+    margin-bottom: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .summary-text { flex: 1; font-size: 14px; color: #555; }
+  .summary-text strong { color: #333; font-size: 16px; }
+  .progress-bar-wrap {
+    background: #e5e7eb;
+    border-radius: 99px;
+    height: 8px;
+    margin-top: 6px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    border-radius: 99px;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    transition: width 0.4s ease;
+  }
+  .progress-bar-fill.done { background: linear-gradient(90deg, #22c55e, #16a34a); }
+  .summary-emoji { font-size: 32px; }
+
+  /* 今日の服薬 */
+  .today-card {
+    background: white;
+    border-radius: 16px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    transition: transform 0.1s;
+  }
+  .today-card.all-taken {
+    border: 2px solid #86efac;
+    background: #f0fdf4;
+  }
+  .today-card:active { transform: scale(0.98); }
+  .today-card-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .med-icon {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+  }
+  .today-card .info { flex: 1; }
+  .today-card .med-name { font-size: 15px; font-weight: 600; }
+  .today-card .med-detail { font-size: 12px; color: #888; margin-top: 2px; }
+  .card-status-badge {
+    font-size: 12px; font-weight: 600;
+    padding: 4px 10px; border-radius: 20px;
+    flex-shrink: 0;
+  }
+  .card-status-badge.done { background: #dcfce7; color: #16a34a; }
+  .card-status-badge.partial { background: #fef3c7; color: #d97706; }
+  .card-status-badge.none { background: #fee2e2; color: #dc2626; }
+
+  /* 時間ごとのチェック行 */
+  .time-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+    user-select: none;
+  }
+  .time-row:last-child { margin-bottom: 0; }
+  .time-row:hover { background: #f9fafb; }
+  .time-row.taken { background: #f0fdf4; }
+  .time-row:active { background: #e5e7eb; }
+
+  .checkbox {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    border: 2.5px solid #d1d5db;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 14px;
+    transition: all 0.15s;
+    background: white;
+  }
+  .time-row.taken .checkbox {
+    background: #16a34a;
+    border-color: #16a34a;
+    color: white;
+  }
+  .time-label {
+    font-size: 15px;
+    font-weight: 500;
+    color: #555;
+    flex: 1;
+  }
+  .time-row.taken .time-label {
+    color: #16a34a;
+  }
+  .taken-time-text {
+    font-size: 11px;
+    color: #86efac;
+  }
+  .time-row:not(.taken) .taken-time-text { display: none; }
+
+  .time-badge {
+    background: #f0f4ff;
+    color: #667eea;
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1.5px solid #c7d2fe;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .time-badge.taken {
+    background: #dcfce7;
+    color: #16a34a;
+    border-color: #86efac;
+    text-decoration: line-through;
+    opacity: 0.75;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #aaa;
+    font-size: 14px;
+  }
+  .empty-state .emoji { font-size: 48px; display: block; margin-bottom: 12px; }
+
+  /* 薬リスト */
+  .med-card {
+    background: white;
+    border-radius: 16px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .med-card .info { flex: 1; }
+  .med-card .med-name { font-size: 15px; font-weight: 600; }
+  .med-card .med-sub { font-size: 12px; color: #888; margin-top: 3px; }
+  .med-card .actions { display: flex; gap: 8px; }
+  .btn-icon {
+    background: none; border: none; cursor: pointer;
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    transition: background 0.15s;
+  }
+  .btn-icon:hover { background: #f3f4f6; }
+
+  /* 追加ボタン */
+  .fab {
+    position: fixed;
+    bottom: 24px;
+    right: 50%;
+    transform: translateX(50%);
+    max-width: calc(480px - 48px);
+    width: calc(100% - 48px);
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    border-radius: 50px;
+    padding: 14px 24px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(102,126,234,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: transform 0.1s, box-shadow 0.1s;
+  }
+  .fab:active { transform: translateX(50%) scale(0.97); }
+
+  /* モーダル */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 100;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: white;
+    border-radius: 24px 24px 0 0;
+    padding: 24px 20px 40px;
+    width: 100%;
+    max-width: 480px;
+    animation: slideUp 0.25s ease;
+  }
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+  .modal-title {
+    font-size: 18px; font-weight: 700;
+    margin-bottom: 20px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .close-btn {
+    background: #f3f4f6; border: none; border-radius: 50%;
+    width: 32px; height: 32px; cursor: pointer;
+    font-size: 16px; display: flex; align-items: center; justify-content: center;
+  }
+
+  label { display: block; font-size: 13px; font-weight: 600; color: #555; margin-bottom: 5px; }
+  input[type=text], input[type=number], input[type=time], select {
+    width: 100%;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 15px;
+    margin-bottom: 14px;
+    outline: none;
+    transition: border-color 0.15s;
+    font-family: inherit;
+  }
+  input:focus, select:focus { border-color: #667eea; }
+
+  .time-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .time-tag {
+    background: #f0f4ff;
+    border: 1.5px solid #c7d2fe;
+    color: #667eea;
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 13px;
+    display: flex; align-items: center; gap: 6px;
+    font-weight: 500;
+  }
+  .time-tag .remove {
+    cursor: pointer; font-size: 14px; color: #999; line-height: 1;
+  }
+  .add-time-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .add-time-row input { margin-bottom: 0; flex: 1; }
+  .btn-small {
+    background: #667eea; color: white; border: none;
+    border-radius: 10px; padding: 0 16px;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .emoji-picker { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .emoji-option {
+    width: 44px; height: 44px;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 22px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color 0.15s;
+  }
+  .emoji-option.selected { border-color: #667eea; background: #f0f4ff; }
+
+  .color-picker { display: flex; gap: 8px; margin-bottom: 14px; }
+  .color-option {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 3px solid transparent;
+    transition: border-color 0.15s;
+  }
+  .color-option.selected { border-color: #333; }
+
+  .btn-save {
+    width: 100%; background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white; border: none; border-radius: 12px;
+    padding: 14px; font-size: 16px; font-weight: 700;
+    cursor: pointer; margin-top: 4px;
+  }
+
+  /* タブ */
+  .tabs {
+    display: flex;
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 0 16px;
+    position: sticky;
+    top: 68px;
+    z-index: 9;
+  }
+  .tab {
+    flex: 1; text-align: center;
+    padding: 12px 0;
+    font-size: 14px; font-weight: 600;
+    color: #aaa;
+    cursor: pointer;
+    border-bottom: 2.5px solid transparent;
+    transition: all 0.15s;
+  }
+  .tab.active { color: #667eea; border-bottom-color: #667eea; }
+
+  .tab-content { display: none; padding-bottom: 90px; }
+  .tab-content.active { display: block; }
+
+  /* 通知バナー */
+  .notif-banner {
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: #92400e;
+    margin: 12px 16px 0;
+    display: flex; align-items: center; gap: 8px;
+    cursor: pointer;
+  }
+  .notif-banner.hidden { display: none; }
+
+  /* 履歴 */
+  .history-date {
+    font-size: 13px; font-weight: 600; color: #888;
+    padding: 12px 16px 6px;
+  }
+  .history-item {
+    background: white;
+    margin: 0 16px 8px;
+    border-radius: 12px;
+    padding: 12px 14px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    display: flex; align-items: center; gap: 10px;
+    font-size: 14px;
+  }
+  .history-item .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>💊 お薬リマインダー</h1>
+  <p id="today-label"></p>
+</header>
+
+<div id="notif-banner" class="notif-banner hidden" onclick="requestNotifPermission()">
+  🔔 通知を許可すると飲み忘れ防止アラートが届きます（タップして許可）
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('today')">今日</div>
+  <div class="tab" onclick="switchTab('meds')">薬の管理</div>
+  <div class="tab" onclick="switchTab('history')">履歴</div>
+</div>
+
+<!-- 今日タブ -->
+<div id="tab-today" class="tab-content active">
+  <div class="section">
+    <div class="section-title">今日の服薬スケジュール</div>
+    <div id="today-list"></div>
+  </div>
+</div>
+
+<!-- 薬の管理タブ -->
+<div id="tab-meds" class="tab-content">
+  <div class="section">
+    <div class="section-title">登録済みのお薬</div>
+    <div id="meds-list"></div>
+  </div>
+</div>
+
+<!-- 履歴タブ -->
+<div id="tab-history" class="tab-content">
+  <div id="history-list"></div>
+</div>
+
+<button class="fab" onclick="openModal()">
+  ＋ お薬を追加
+</button>
+
+<!-- 追加/編集モーダル -->
+<div class="modal-overlay" id="modal" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="modal-title-text">お薬を追加</span>
+      <button class="close-btn" onclick="closeModal()">✕</button>
+    </div>
+
+    <label>アイコン</label>
+    <div class="emoji-picker" id="emoji-picker">
+      <div class="emoji-option selected" data-emoji="💊" onclick="selectEmoji(this)">💊</div>
+      <div class="emoji-option" data-emoji="🔵" onclick="selectEmoji(this)">🔵</div>
+      <div class="emoji-option" data-emoji="🟡" onclick="selectEmoji(this)">🟡</div>
+      <div class="emoji-option" data-emoji="🔴" onclick="selectEmoji(this)">🔴</div>
+      <div class="emoji-option" data-emoji="🌿" onclick="selectEmoji(this)">🌿</div>
+      <div class="emoji-option" data-emoji="💉" onclick="selectEmoji(this)">💉</div>
+      <div class="emoji-option" data-emoji="🧴" onclick="selectEmoji(this)">🧴</div>
+      <div class="emoji-option" data-emoji="🫀" onclick="selectEmoji(this)">🫀</div>
+    </div>
+
+    <label>背景色</label>
+    <div class="color-picker" id="color-picker">
+      <div class="color-option selected" data-color="#e0e7ff" style="background:#e0e7ff" onclick="selectColor(this)"></div>
+      <div class="color-option" data-color="#dcfce7" style="background:#dcfce7" onclick="selectColor(this)"></div>
+      <div class="color-option" data-color="#fef3c7" style="background:#fef3c7" onclick="selectColor(this)"></div>
+      <div class="color-option" data-color="#fce7f3" style="background:#fce7f3" onclick="selectColor(this)"></div>
+      <div class="color-option" data-color="#f3e8ff" style="background:#f3e8ff" onclick="selectColor(this)"></div>
+    </div>
+
+    <label>薬の名前</label>
+    <input type="text" id="input-name" placeholder="例：ビタミンC">
+
+    <label>用量・メモ（任意）</label>
+    <input type="text" id="input-note" placeholder="例：1錠、食後">
+
+    <label>服薬時間</label>
+    <div class="time-list" id="time-list"></div>
+    <div class="add-time-row">
+      <input type="time" id="input-time">
+      <button class="btn-small" onclick="addTime()">追加</button>
+    </div>
+
+    <button class="btn-save" onclick="saveMed()">保存する</button>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+// ── Firebase 初期化 ───────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyCCOjAO0cu_RlJd_eWQSIgLQRodfN57gPQ",
+  authDomain: "medicine-reminder-edaa6.firebaseapp.com",
+  projectId: "medicine-reminder-edaa6",
+  storageBucket: "medicine-reminder-edaa6.firebasestorage.app",
+  messagingSenderId: "971818661172",
+  appId: "1:971818661172:web:999d7bd9803795d23f2161"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// ── ユーティリティ ───────────────────
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// ── Firestore 読み書き ────────────────
+async function loadData() {
+  const snap = await db.collection('meds').orderBy('order').get();
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+async function saveData(medsArr) {
+  const batch = db.batch();
+  // 全削除してから書き直す
+  const existing = await db.collection('meds').get();
+  existing.docs.forEach(d => batch.delete(d.ref));
+  medsArr.forEach((med, i) => {
+    const ref = db.collection('meds').doc(med.id);
+    batch.set(ref, { ...med, order: i });
+  });
+  await batch.commit();
+}
+async function loadTaken() {
+  const doc = await db.collection('taken').doc(todayStr()).get();
+  return doc.exists ? doc.data() : {};
+}
+async function saveTaken(t) {
+  await db.collection('taken').doc(todayStr()).set(t);
+}
+async function loadHistory() {
+  const snap = await db.collection('history').orderBy('iso', 'desc').limit(200).get();
+  return snap.docs.map(d => d.data());
+}
+async function addHistoryRecord(record) {
+  await db.collection('history').add(record);
+}
+async function removeHistoryRecord(medId, time, date) {
+  const snap = await db.collection('history')
+    .where('medId','==',medId).where('time','==',time).where('date','==',date).get();
+  const batch = db.batch();
+  snap.docs.forEach(d => batch.delete(d.ref));
+  await batch.commit();
+}
+
+// ── 状態 ──────────────────────────────
+let meds = [];
+let editId = null;
+let selectedEmoji = '💊';
+let selectedColor = '#e0e7ff';
+let pendingTimes = [];
+
+// ── 初期化 ────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  const d = new Date();
+  const days = ['日','月','火','水','木','金','土'];
+  document.getElementById('today-label').textContent =
+    `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${days[d.getDay()]}）`;
+
+  // ローディング表示
+  document.getElementById('today-list').innerHTML = '<div class="empty-state"><span class="emoji">⏳</span>読み込み中...</div>';
+
+  meds = await loadData();
+  checkNotifPermission();
+  renderToday();
+  renderMeds();
+  renderHistory();
+  scheduleAll();
+
+  // リアルタイム同期：他の端末で変更があったら自動更新
+  db.collection('meds').orderBy('order').onSnapshot(async snap => {
+    meds = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderToday();
+    renderMeds();
+    scheduleAll();
+  });
+  db.collection('taken').doc(todayStr()).onSnapshot(() => {
+    renderToday();
+  });
+});
+
+// ── タブ ──────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    t.classList.toggle('active', ['today','meds','history'][i] === tab);
+  });
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  if (tab === 'history') renderHistory();
+}
+
+// ── 今日の服薬 ────────────────────────
+async function renderToday() {
+  const taken = await loadTaken();
+  const list = document.getElementById('today-list');
+  if (meds.length === 0) {
+    list.innerHTML = `<div class="empty-state"><span class="emoji">💊</span>まだお薬が登録されていません<br>「お薬を追加」から登録しましょう</div>`;
+    return;
+  }
+
+  // サマリー計算
+  let totalDoses = 0, takenDoses = 0;
+  meds.forEach(med => {
+    (med.times || []).forEach(t => {
+      totalDoses++;
+      if (taken[`${med.id}_${t}`]) takenDoses++;
+    });
+  });
+  const pct = totalDoses ? Math.round(takenDoses / totalDoses * 100) : 0;
+  const allDone = totalDoses > 0 && takenDoses === totalDoses;
+  const summaryEmoji = allDone ? '🎉' : pct >= 50 ? '💪' : '💊';
+  const summaryMsg = allDone
+    ? '今日の服薬はすべて完了！'
+    : totalDoses === 0 ? '服薬スケジュールなし'
+    : `<strong>${takenDoses}/${totalDoses}</strong> 回 服薬済み`;
+
+  const summaryHtml = totalDoses > 0 ? `
+    <div class="today-summary">
+      <div class="info" style="flex:1">
+        <div class="summary-text">${summaryMsg}</div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill ${allDone?'done':''}" style="width:${pct}%"></div>
+        </div>
+      </div>
+      <div class="summary-emoji">${summaryEmoji}</div>
+    </div>` : '';
+
+  const cardsHtml = meds.map(med => {
+    const times = med.times || [];
+    const takenCount = times.filter(t => taken[`${med.id}_${t}`]).length;
+    const allTaken = times.length > 0 && takenCount === times.length;
+    const statusClass = times.length === 0 ? '' : allTaken ? 'done' : takenCount > 0 ? 'partial' : 'none';
+    const statusLabel = times.length === 0 ? '' : allTaken ? '✓ 完了' : takenCount > 0 ? `${takenCount}/${times.length}` : '未服薬';
+
+    const timeRows = times.length === 0
+      ? `<div style="color:#bbb;font-size:13px;padding:4px 10px">時間未設定</div>`
+      : times.map(t => {
+          const key = `${med.id}_${t}`;
+          const isTaken = !!taken[key];
+          const takenAt = isTaken ? new Date(taken[key]) : null;
+          const takenStr = takenAt ? `${String(takenAt.getHours()).padStart(2,'0')}:${String(takenAt.getMinutes()).padStart(2,'0')} 服薬` : '';
+          return `<div class="time-row ${isTaken?'taken':''}" onclick="toggleTaken('${med.id}','${t}')">
+            <div class="checkbox">${isTaken ? '✓' : ''}</div>
+            <div class="time-label">${t}</div>
+            <div class="taken-time-text">${takenStr}</div>
+          </div>`;
+        }).join('');
+
+    return `<div class="today-card ${allTaken?'all-taken':''}">
+      <div class="today-card-top">
+        <div class="med-icon" style="background:${med.color}">${med.emoji}</div>
+        <div class="info">
+          <div class="med-name">${esc(med.name)}</div>
+          ${med.note ? `<div class="med-detail">${esc(med.note)}</div>` : ''}
+        </div>
+        ${statusLabel ? `<span class="card-status-badge ${statusClass}">${statusLabel}</span>` : ''}
+      </div>
+      ${timeRows}
+    </div>`;
+  }).join('');
+
+  list.innerHTML = summaryHtml + cardsHtml;
+}
+
+async function toggleTaken(medId, time) {
+  const taken = await loadTaken();
+  const key = `${medId}_${time}`;
+  const isTaken = !taken[key];
+  if (isTaken) {
+    taken[key] = new Date().toISOString();
+    const med = meds.find(m => m.id === medId);
+    await addHistoryRecord({ medId, medName: med?.name||'', emoji: med?.emoji||'💊', color: med?.color||'#e0e7ff', time, date: todayStr(), iso: taken[key] });
+  } else {
+    delete taken[key];
+    await removeHistoryRecord(medId, time, todayStr());
+  }
+  await saveTaken(taken);
+  renderToday();
+  renderHistory();
+}
+
+// ── 履歴 ──────────────────────────────
+async function renderHistory() {
+  const h = await loadHistory();
+  const el = document.getElementById('history-list');
+  if (h.length === 0) {
+    el.innerHTML = `<div class="empty-state" style="margin-top:40px"><span class="emoji">📋</span>まだ服薬記録がありません</div>`;
+    return;
+  }
+  // 日付でグループ化
+  const groups = {};
+  h.forEach(r => { if (!groups[r.date]) groups[r.date] = []; groups[r.date].push(r); });
+  el.innerHTML = Object.keys(groups).sort().reverse().map(date => {
+    const [y,m,d] = date.split('-');
+    const label = date === todayStr() ? '今日' : `${y}年${m}月${d}日`;
+    const rows = groups[date].map(r => `
+      <div class="history-item">
+        <div class="dot" style="background:${r.color.replace('e0','66').replace('7ff','7ea')||'#667eea'}"></div>
+        <span>${r.emoji} ${esc(r.medName)}</span>
+        <span style="margin-left:auto;color:#888;font-size:13px">${r.time} 服薬</span>
+      </div>`).join('');
+    return `<div class="history-date">${label}</div>${rows}`;
+  }).join('');
+}
+
+// ── 薬の管理 ──────────────────────────
+function renderMeds() {
+  const el = document.getElementById('meds-list');
+  if (meds.length === 0) {
+    el.innerHTML = `<div class="empty-state"><span class="emoji">📝</span>お薬が登録されていません</div>`;
+    return;
+  }
+  el.innerHTML = meds.map(med => `
+    <div class="med-card">
+      <div class="med-icon" style="background:${med.color}">${med.emoji}</div>
+      <div class="info">
+        <div class="med-name">${esc(med.name)}</div>
+        <div class="med-sub">${med.note ? esc(med.note) + ' · ' : ''}${(med.times||[]).join(', ') || '時間未設定'}</div>
+      </div>
+      <div class="actions">
+        <button class="btn-icon" onclick="editMed('${med.id}')" title="編集">✏️</button>
+        <button class="btn-icon" onclick="deleteMed('${med.id}')" title="削除">🗑️</button>
+      </div>
+    </div>`).join('');
+}
+
+async function deleteMed(id) {
+  if (!confirm('このお薬を削除しますか？')) return;
+  meds = meds.filter(m => m.id !== id);
+  await saveData(meds);
+  renderMeds();
+  renderToday();
+}
+
+// ── モーダル ──────────────────────────
+function openModal(id = null) {
+  editId = id;
+  pendingTimes = [];
+  document.getElementById('modal-title-text').textContent = id ? 'お薬を編集' : 'お薬を追加';
+  document.getElementById('input-name').value = '';
+  document.getElementById('input-note').value = '';
+  document.getElementById('input-time').value = '';
+  selectedEmoji = '💊'; selectedColor = '#e0e7ff';
+  document.querySelectorAll('.emoji-option').forEach(e => e.classList.toggle('selected', e.dataset.emoji === selectedEmoji));
+  document.querySelectorAll('.color-option').forEach(c => c.classList.toggle('selected', c.dataset.color === selectedColor));
+
+  if (id) {
+    const med = meds.find(m => m.id === id);
+    if (med) {
+      document.getElementById('input-name').value = med.name;
+      document.getElementById('input-note').value = med.note || '';
+      pendingTimes = [...(med.times||[])];
+      selectedEmoji = med.emoji || '💊';
+      selectedColor = med.color || '#e0e7ff';
+      document.querySelectorAll('.emoji-option').forEach(e => e.classList.toggle('selected', e.dataset.emoji === selectedEmoji));
+      document.querySelectorAll('.color-option').forEach(c => c.classList.toggle('selected', c.dataset.color === selectedColor));
+    }
+  }
+  renderTimeTags();
+  document.getElementById('modal').classList.add('open');
+  document.getElementById('input-name').focus();
+}
+function editMed(id) { openModal(id); }
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+function closeModalOutside(e) { if (e.target.id === 'modal') closeModal(); }
+
+function selectEmoji(el) {
+  selectedEmoji = el.dataset.emoji;
+  document.querySelectorAll('.emoji-option').forEach(e => e.classList.remove('selected'));
+  el.classList.add('selected');
+}
+function selectColor(el) {
+  selectedColor = el.dataset.color;
+  document.querySelectorAll('.color-option').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function addTime() {
+  const t = document.getElementById('input-time').value;
+  if (!t) return;
+  if (!pendingTimes.includes(t)) { pendingTimes.push(t); pendingTimes.sort(); }
+  document.getElementById('input-time').value = '';
+  renderTimeTags();
+}
+function removeTime(t) {
+  pendingTimes = pendingTimes.filter(x => x !== t);
+  renderTimeTags();
+}
+function renderTimeTags() {
+  document.getElementById('time-list').innerHTML = pendingTimes.map(t =>
+    `<div class="time-tag">${t}<span class="remove" onclick="removeTime('${t}')">✕</span></div>`
+  ).join('');
+}
+
+async function saveMed() {
+  const name = document.getElementById('input-name').value.trim();
+  if (!name) { alert('薬の名前を入力してください'); return; }
+  if (editId) {
+    const idx = meds.findIndex(m => m.id === editId);
+    if (idx !== -1) meds[idx] = { ...meds[idx], name, note: document.getElementById('input-note').value.trim(), times: [...pendingTimes], emoji: selectedEmoji, color: selectedColor };
+  } else {
+    meds.push({ id: Date.now().toString(), name, note: document.getElementById('input-note').value.trim(), times: [...pendingTimes], emoji: selectedEmoji, color: selectedColor });
+  }
+  await saveData(meds);
+  closeModal();
+  renderMeds();
+  renderToday();
+  scheduleAll();
+}
+
+// ── 通知 ──────────────────────────────
+function checkNotifPermission() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'default') {
+    document.getElementById('notif-banner').classList.remove('hidden');
+  }
+}
+function requestNotifPermission() {
+  Notification.requestPermission().then(p => {
+    if (p === 'granted') {
+      document.getElementById('notif-banner').classList.add('hidden');
+      scheduleAll();
+    }
+  });
+}
+
+let alarmTimers = [];
+function scheduleAll() {
+  alarmTimers.forEach(clearTimeout);
+  alarmTimers = [];
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const now = new Date();
+  meds.forEach(med => {
+    (med.times || []).forEach(t => {
+      const [h, m] = t.split(':').map(Number);
+      const target = new Date(now);
+      target.setHours(h, m, 0, 0);
+      if (target <= now) return;
+      const ms = target - now;
+      const timer = setTimeout(async () => {
+        const taken = await loadTaken();
+        const key = `${med.id}_${t}`;
+        if (!taken[key]) {
+          new Notification(`💊 ${med.name} の時間です`, {
+            body: `${t} の服薬時間です${med.note ? '（' + med.note + '）' : ''}`,
+            icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><text y="28" font-size="28">💊</text></svg>'
+          });
+        }
+      }, ms);
+      alarmTimers.push(timer);
+    });
+  });
+}
+
+// ── ユーティリティ ───────────────────
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
