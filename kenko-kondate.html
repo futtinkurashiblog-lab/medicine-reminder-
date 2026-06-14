@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🦴 健康献立アプリ</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif;
+  background: #f0f7f0;
+  color: #333;
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+header {
+  background: linear-gradient(135deg, #56ab2f, #a8e063);
+  color: white;
+  padding: 20px 16px 16px;
+  text-align: center;
+}
+header h1 { font-size: 22px; margin-bottom: 4px; }
+header p { font-size: 13px; opacity: 0.9; }
+.tabs {
+  display: flex;
+  background: white;
+  border-bottom: 2px solid #e0e0e0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.tab {
+  flex: 1;
+  padding: 12px 4px;
+  text-align: center;
+  font-size: 12px;
+  color: #999;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+}
+.tab.active { color: #56ab2f; border-bottom-color: #56ab2f; font-weight: bold; }
+.tab-content { display: none; padding: 16px; padding-bottom: 80px; }
+.tab-content.active { display: block; }
+
+/* 栄養バー */
+.nutrition-card {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.nutrition-card h3 { font-size: 14px; color: #666; margin-bottom: 12px; }
+.nutrition-item { margin-bottom: 10px; }
+.nutrition-label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; }
+.nutrition-bar-bg { background: #f0f0f0; border-radius: 4px; height: 8px; }
+.nutrition-bar { height: 8px; border-radius: 4px; transition: width 0.5s; }
+.bar-ca { background: #4CAF50; }
+.bar-vd { background: #FF9800; }
+.bar-protein { background: #2196F3; }
+
+/* 食事記録 */
+.meal-section {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.meal-section h3 { font-size: 15px; font-weight: bold; margin-bottom: 12px; }
+.meal-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+.meal-item:last-child { border-bottom: none; }
+.meal-name { font-size: 14px; }
+.meal-time { font-size: 11px; color: #999; }
+.meal-nutrition { font-size: 11px; color: #56ab2f; text-align: right; }
+.delete-btn {
+  background: none;
+  border: none;
+  color: #ccc;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px;
+}
+
+/* 入力フォーム */
+.add-form {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.add-form h3 { font-size: 15px; font-weight: bold; margin-bottom: 12px; }
+.form-row { margin-bottom: 10px; }
+.form-row label { font-size: 12px; color: #666; display: block; margin-bottom: 4px; }
+.form-row input, .form-row select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+}
+.form-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.btn-primary {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #56ab2f, #a8e063);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 8px;
+}
+.btn-secondary {
+  width: 100%;
+  padding: 12px;
+  background: white;
+  color: #56ab2f;
+  border: 2px solid #56ab2f;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+/* アドバイス */
+.advice-card {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.advice-card h3 { font-size: 15px; font-weight: bold; margin-bottom: 12px; }
+.advice-item {
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.advice-good { background: #e8f5e9; color: #2e7d32; }
+.advice-warn { background: #fff8e1; color: #f57f17; }
+.advice-tip { background: #e3f2fd; color: #1565c0; }
+
+/* 献立提案 */
+.menu-card {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.menu-card h3 { font-size: 15px; font-weight: bold; margin-bottom: 12px; }
+.menu-item {
+  padding: 12px;
+  background: #f8fdf8;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  border-left: 3px solid #56ab2f;
+}
+.menu-item .menu-title { font-size: 14px; font-weight: bold; margin-bottom: 4px; }
+.menu-item .menu-desc { font-size: 12px; color: #666; line-height: 1.5; }
+.menu-item .menu-tags { margin-top: 6px; }
+.menu-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  margin-right: 4px;
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+.menu-tag.freeze { background: #e3f2fd; color: #1565c0; }
+
+/* 日付選択 */
+.date-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: white;
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.date-nav button {
+  background: none;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.date-nav span { font-size: 15px; font-weight: bold; }
+
+/* 基本知識 */
+.knowledge-card {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.knowledge-card h3 { font-size: 15px; font-weight: bold; margin-bottom: 12px; }
+.knowledge-item {
+  padding: 10px;
+  background: #f8fdf8;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.knowledge-item strong { color: #56ab2f; }
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #999;
+}
+.empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+
+.loading { text-align: center; padding: 20px; color: #999; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🦴 健康献立アプリ</h1>
+  <p id="headerDate"></p>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('today')">📋 今日の食事</div>
+  <div class="tab" onclick="switchTab('menu')">🍽️ 献立提案</div>
+  <div class="tab" onclick="switchTab('advice')">💡 アドバイス</div>
+  <div class="tab" onclick="switchTab('history')">📅 履歴</div>
+</div>
+
+<!-- 今日の食事タブ -->
+<div id="tab-today" class="tab-content active">
+  <div class="nutrition-card">
+    <h3>📊 今日の栄養摂取状況</h3>
+    <div class="nutrition-item">
+      <div class="nutrition-label">
+        <span>🦴 カルシウム</span>
+        <span id="ca-text">0 / 650mg</span>
+      </div>
+      <div class="nutrition-bar-bg">
+        <div class="nutrition-bar bar-ca" id="ca-bar" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="nutrition-item">
+      <div class="nutrition-label">
+        <span>☀️ ビタミンD</span>
+        <span id="vd-text">0 / 20μg</span>
+      </div>
+      <div class="nutrition-bar-bg">
+        <div class="nutrition-bar bar-vd" id="vd-bar" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="nutrition-item">
+      <div class="nutrition-label">
+        <span>💪 たんぱく質</span>
+        <span id="protein-text">0 / 60g</span>
+      </div>
+      <div class="nutrition-bar-bg">
+        <div class="nutrition-bar bar-protein" id="protein-bar" style="width:0%"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="meal-section">
+    <h3>🌅 朝食</h3>
+    <div id="breakfast-list"></div>
+  </div>
+  <div class="meal-section">
+    <h3>☀️ 昼食</h3>
+    <div id="lunch-list"></div>
+  </div>
+  <div class="meal-section">
+    <h3>🌙 夕食</h3>
+    <div id="dinner-list"></div>
+  </div>
+  <div class="meal-section">
+    <h3>🍵 間食・その他</h3>
+    <div id="snack-list"></div>
+  </div>
+
+  <div class="add-form">
+    <h3>＋ 食事を追加</h3>
+    <div class="form-row">
+      <label>食事の種類</label>
+      <select id="meal-type">
+        <option value="breakfast">🌅 朝食</option>
+        <option value="lunch">☀️ 昼食</option>
+        <option value="dinner">🌙 夕食</option>
+        <option value="snack">🍵 間食・その他</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>食べたもの（食品名だけでもOK）</label>
+      <input type="text" id="meal-name" placeholder="例：鮭の塩焼き、小松菜のおひたし">
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Ca(mg)</label>
+        <input type="number" id="meal-ca" placeholder="0" min="0">
+      </div>
+      <div class="form-row">
+        <label>VitD(μg)</label>
+        <input type="number" id="meal-vd" placeholder="0" min="0" step="0.1">
+      </div>
+      <div class="form-row">
+        <label>たんぱく質(g)</label>
+        <input type="number" id="meal-protein" placeholder="0" min="0">
+      </div>
+    </div>
+    <button class="btn-primary" onclick="addMeal()">記録する</button>
+  </div>
+</div>
+
+<!-- 献立提案タブ -->
+<div id="tab-menu" class="tab-content">
+  <div class="menu-card">
+    <h3>🌅 朝食（毎日のルーティン）</h3>
+    <div class="menu-item">
+      <div class="menu-title">いつもの朝食セット</div>
+      <div class="menu-desc">バナナ1本・コーヒー・紅茶・ヨーグルト・キウイ・プルーン・ミックスナッツ・蜂蜜</div>
+      <div class="menu-tags">
+        <span class="menu-tag">🦴 Ca約200mg</span>
+        <span class="menu-tag">💪 たんぱく質約8g</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="menu-card">
+    <h3>☀️ 昼食（毎日のルーティン）</h3>
+    <div class="menu-item">
+      <div class="menu-title">納豆・卵かけご飯・味噌汁セット</div>
+      <div class="menu-desc">納豆1パック・卵かけご飯・お味噌汁（具はその日によって変わります）・漬物</div>
+      <div class="menu-tags">
+        <span class="menu-tag">🦴 Ca約150mg</span>
+        <span class="menu-tag">💪 たんぱく質約15g</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="menu-card">
+    <h3>🌙 夕食おすすめメニュー（骨密度改善）</h3>
+
+    <div class="menu-item">
+      <div class="menu-title">🐟 鮭の塩焼き＋小松菜のおひたし＋豆腐の味噌汁</div>
+      <div class="menu-desc">鮭はビタミンDが豊富！小松菜と豆腐でカルシウムもWゲット</div>
+      <div class="menu-tags">
+        <span class="menu-tag">☀️ VitD★★★</span>
+        <span class="menu-tag">🦴 Ca★★</span>
+      </div>
+    </div>
+
+    <div class="menu-item">
+      <div class="menu-title">🍗 鶏もも肉と小松菜のチーズ蒸し＋豆腐の味噌汁</div>
+      <div class="menu-desc">鶏肉・小松菜・チーズでカルシウム3種類！フライパンで簡単</div>
+      <div class="menu-tags">
+        <span class="menu-tag">🦴 Ca★★★</span>
+        <span class="menu-tag">💪 たんぱく質★★</span>
+      </div>
+    </div>
+
+    <div class="menu-item">
+      <div class="menu-title">🥩 豆腐入り和風ハンバーグ＋人参・玉ねぎソテー＋トマトスープ</div>
+      <div class="menu-desc">豆腐を混ぜることでカルシウムUP。多めに作って冷凍OK</div>
+      <div class="menu-tags">
+        <span class="menu-tag">🦴 Ca★★</span>
+        <span class="menu-tag">💪 たんぱく質★★</span>
+        <span class="menu-tag freeze">❄️ 冷凍OK</span>
+      </div>
+    </div>
+
+    <div class="menu-item">
+      <div class="menu-title">🐟 ブリの照り焼き＋茄子の煮浸し＋小松菜のスープ</div>
+      <div class="menu-desc">料理酒・みりん・醤油・砂糖で簡単照り焼き。ビタミンD補強に</div>
+      <div class="menu-tags">
+        <span class="menu-tag">☀️ VitD★★</span>
+        <span class="menu-tag">💪 たんぱく質★★</span>
+      </div>
+    </div>
+
+    <div class="menu-item">
+      <div class="menu-title">🍖 肉じゃが（豚こま）＋豆腐の味噌汁</div>
+      <div class="menu-desc">豚こま・じゃがいも・人参・玉ねぎ。まとめて作って冷凍OK</div>
+      <div class="menu-tags">
+        <span class="menu-tag">💪 たんぱく質★★</span>
+        <span class="menu-tag freeze">❄️ 冷凍OK</span>
+      </div>
+    </div>
+
+    <div class="menu-item">
+      <div class="menu-title">🐔 鶏むね肉のやわらか蒸し＋きのこあんかけ</div>
+      <div class="menu-desc">多めに作って冷凍。きのこでビタミンD補強</div>
+      <div class="menu-tags">
+        <span class="menu-tag">☀️ VitD★</span>
+        <span class="menu-tag">💪 たんぱく質★★★</span>
+        <span class="menu-tag freeze">❄️ 冷凍OK</span>
+      </div>
+    </div>
+
+    <div class="menu-item">
+      <div class="menu-title">🐟 さばの味噌煮＋ひじき煮＋ご飯</div>
+      <div class="menu-desc">さばでビタミンD、ひじきでカルシウム。小分け冷凍OK</div>
+      <div class="menu-tags">
+        <span class="menu-tag">☀️ VitD★★★</span>
+        <span class="menu-tag">🦴 Ca★★</span>
+        <span class="menu-tag freeze">❄️ 冷凍OK</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="menu-card">
+    <h3>🛒 次の買い物でプラスしてほしいもの</h3>
+    <div class="menu-item">
+      <div class="menu-desc">
+        🐟 <strong>しらす・ちりめんじゃこ</strong>　カルシウム＆ビタミンD、ご飯にのせるだけ<br>
+        🐟 <strong>鮭の切り身</strong>　ビタミンDトップクラス<br>
+        🐟 <strong>ししゃも</strong>　骨ごと食べてカルシウム最強、安い！<br>
+        🍄 <strong>しめじ・えのき・しいたけ</strong>　ビタミンD補強<br>
+        🥬 <strong>小松菜</strong>　カルシウムが多い野菜
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- アドバイスタブ -->
+<div id="tab-advice" class="tab-content">
+  <div class="advice-card">
+    <h3>📊 今日の食事を振り返る</h3>
+    <button class="btn-primary" onclick="generateAdvice()">振り返りを見る</button>
+    <div id="advice-result" style="margin-top:12px;"></div>
+  </div>
+
+  <div class="knowledge-card">
+    <h3>💡 骨密度改善のための栄養知識</h3>
+    <div class="knowledge-item">
+      <strong>🦴 カルシウム（目標：650mg/日）</strong><br>
+      小松菜・豆腐・チーズ・しらす・ヨーグルト・ししゃもに豊富。吸収にはビタミンDが必要です。
+    </div>
+    <div class="knowledge-item">
+      <strong>☀️ ビタミンD（目標：20μg/日）</strong><br>
+      鮭・さんま・いわし・さば・ししゃも・きのこ類に豊富。日光浴（散歩）でも体内で作られます。
+    </div>
+    <div class="knowledge-item">
+      <strong>💪 たんぱく質（目標：60g/日）</strong><br>
+      骨の土台となるコラーゲンの材料。肉・魚・卵・豆腐・納豆をバランスよく。
+    </div>
+    <div class="knowledge-item">
+      <strong>🐕 愛犬との散歩が最高の骨活！</strong><br>
+      朝晩の散歩で日光を浴びることでビタミンDが体内で生成されます。続けてください☀️
+    </div>
+  </div>
+</div>
+
+<!-- 履歴タブ -->
+<div id="tab-history" class="tab-content">
+  <div class="date-nav">
+    <button onclick="changeDate(-1)">◀ 前の日</button>
+    <span id="history-date"></span>
+    <button onclick="changeDate(1)">次の日 ▶</button>
+  </div>
+  <div id="history-content">
+    <div class="loading">読み込み中...</div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCCOjAO0cu_RlJd_eWQSIgLQRodfN57gPQ",
+  authDomain: "medicine-reminder-edaa6.firebaseapp.com",
+  projectId: "medicine-reminder-edaa6",
+  storageBucket: "medicine-reminder-edaa6.firebasestorage.app",
+  messagingSenderId: "971818661172",
+  appId: "1:971818661172:web:999d7bd9803795d23f2161"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+let currentDate = new Date();
+let historyDate = new Date();
+let todayMeals = [];
+let unsubscribe = null;
+
+const TARGETS = { ca: 650, vd: 20, protein: 60 };
+
+function dateStr(d) {
+  return d.toISOString().split('T')[0];
+}
+
+function formatDateJP(d) {
+  const days = ['日','月','火','水','木','金','土'];
+  return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${days[d.getDay()]}）`;
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    const names = ['today','menu','advice','history'];
+    t.classList.toggle('active', names[i] === name);
+  });
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'history') renderHistory();
+}
+
+function updateNutritionBars() {
+  const totals = { ca: 0, vd: 0, protein: 0 };
+  todayMeals.forEach(m => {
+    totals.ca += m.ca || 0;
+    totals.vd += m.vd || 0;
+    totals.protein += m.protein || 0;
+  });
+  document.getElementById('ca-text').textContent = `${Math.round(totals.ca)} / ${TARGETS.ca}mg`;
+  document.getElementById('vd-text').textContent = `${totals.vd.toFixed(1)} / ${TARGETS.vd}μg`;
+  document.getElementById('protein-text').textContent = `${Math.round(totals.protein)} / ${TARGETS.protein}g`;
+  document.getElementById('ca-bar').style.width = Math.min(100, totals.ca / TARGETS.ca * 100) + '%';
+  document.getElementById('vd-bar').style.width = Math.min(100, totals.vd / TARGETS.vd * 100) + '%';
+  document.getElementById('protein-bar').style.width = Math.min(100, totals.protein / TARGETS.protein * 100) + '%';
+}
+
+function renderMeals() {
+  ['breakfast','lunch','dinner','snack'].forEach(type => {
+    const list = document.getElementById(type + '-list');
+    const meals = todayMeals.filter(m => m.type === type);
+    if (meals.length === 0) {
+      list.innerHTML = '<div style="color:#bbb;font-size:13px;padding:8px 0;">まだ記録がありません</div>';
+    } else {
+      list.innerHTML = meals.map(m => `
+        <div class="meal-item">
+          <div>
+            <div class="meal-name">${m.name}</div>
+            ${m.ca||m.vd||m.protein ? `<div class="meal-nutrition">Ca:${m.ca||0}mg VD:${m.vd||0}μg P:${m.protein||0}g</div>` : ''}
+          </div>
+          <button class="delete-btn" onclick="deleteMeal('${m.id}')">×</button>
+        </div>
+      `).join('');
+    }
+  });
+  updateNutritionBars();
+}
+
+function loadTodayMeals() {
+  if (unsubscribe) unsubscribe();
+  const today = dateStr(currentDate);
+  unsubscribe = db.collection('meals').doc(today).collection('items')
+    .orderBy('createdAt')
+    .onSnapshot(snap => {
+      todayMeals = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderMeals();
+    });
+}
+
+async function addMeal() {
+  const name = document.getElementById('meal-name').value.trim();
+  if (!name) { alert('食べたものを入力してください'); return; }
+  const type = document.getElementById('meal-type').value;
+  const ca = parseFloat(document.getElementById('meal-ca').value) || 0;
+  const vd = parseFloat(document.getElementById('meal-vd').value) || 0;
+  const protein = parseFloat(document.getElementById('meal-protein').value) || 0;
+  const today = dateStr(currentDate);
+  await db.collection('meals').doc(today).collection('items').add({
+    name, type, ca, vd, protein,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  document.getElementById('meal-name').value = '';
+  document.getElementById('meal-ca').value = '';
+  document.getElementById('meal-vd').value = '';
+  document.getElementById('meal-protein').value = '';
+}
+
+async function deleteMeal(id) {
+  const today = dateStr(currentDate);
+  await db.collection('meals').doc(today).collection('items').doc(id).delete();
+}
+
+function generateAdvice() {
+  const totals = { ca: 0, vd: 0, protein: 0 };
+  todayMeals.forEach(m => {
+    totals.ca += m.ca || 0;
+    totals.vd += m.vd || 0;
+    totals.protein += m.protein || 0;
+  });
+
+  const foods = todayMeals.map(m => m.name).join('、');
+  let html = '';
+
+  if (todayMeals.length === 0) {
+    html = '<div class="advice-item advice-warn">まだ今日の食事が記録されていません。食事を記録してから振り返りを見てください😊</div>';
+  } else {
+    html += `<div class="advice-item advice-tip">📝 今日の食事：${foods}</div>`;
+
+    // カルシウム
+    const caPercent = Math.round(totals.ca / TARGETS.ca * 100);
+    if (caPercent >= 80) {
+      html += `<div class="advice-item advice-good">✅ カルシウム：${Math.round(totals.ca)}mg（目標の${caPercent}%）よく摂れています！</div>`;
+    } else {
+      const remaining = Math.round(TARGETS.ca - totals.ca);
+      html += `<div class="advice-item advice-warn">⚠️ カルシウムがあと${remaining}mg不足。小松菜・豆腐・チーズ・しらすを追加してみて。</div>`;
+    }
+
+    // ビタミンD
+    const vdPercent = Math.round(totals.vd / TARGETS.vd * 100);
+    if (vdPercent >= 80) {
+      html += `<div class="advice-item advice-good">✅ ビタミンD：${totals.vd.toFixed(1)}μg（目標の${vdPercent}%）よく摂れています！</div>`;
+    } else {
+      html += `<div class="advice-item advice-warn">⚠️ ビタミンDが${totals.vd.toFixed(1)}μg（目標の${vdPercent}%）。鮭・さば・ししゃも・きのこ類を意識して。</div>`;
+    }
+
+    // たんぱく質
+    const pPercent = Math.round(totals.protein / TARGETS.protein * 100);
+    if (pPercent >= 80) {
+      html += `<div class="advice-item advice-good">✅ たんぱく質：${Math.round(totals.protein)}g（目標の${pPercent}%）しっかり摂れています！</div>`;
+    } else {
+      const remaining = Math.round(TARGETS.protein - totals.protein);
+      html += `<div class="advice-item advice-warn">⚠️ たんぱく質があと${remaining}g不足。肉・魚・卵・豆腐・納豆を追加して。</div>`;
+    }
+
+    // 総合
+    const allGood = caPercent >= 80 && vdPercent >= 80 && pPercent >= 80;
+    if (allGood) {
+      html += `<div class="advice-item advice-good">🎉 今日は3つの栄養素がすべて目標達成！骨密度改善に向けて順調です🦴✨</div>`;
+    } else {
+      html += `<div class="advice-item advice-tip">💡 愛犬との散歩で日光を浴びると体内でビタミンDが作られますよ☀️ 続けてください！</div>`;
+    }
+  }
+
+  document.getElementById('advice-result').innerHTML = html;
+}
+
+async function renderHistory() {
+  document.getElementById('history-date').textContent = formatDateJP(historyDate);
+  const dateKey = dateStr(historyDate);
+  const snap = await db.collection('meals').doc(dateKey).collection('items').orderBy('createdAt').get();
+  const meals = snap.docs.map(d => d.data());
+
+  const container = document.getElementById('history-content');
+  if (meals.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">🍽️</div><p>この日の記録はありません</p></div>';
+    return;
+  }
+
+  const totals = { ca: 0, vd: 0, protein: 0 };
+  meals.forEach(m => { totals.ca += m.ca||0; totals.vd += m.vd||0; totals.protein += m.protein||0; });
+
+  const typeNames = { breakfast:'🌅 朝食', lunch:'☀️ 昼食', dinner:'🌙 夕食', snack:'🍵 間食' };
+  const grouped = {};
+  meals.forEach(m => {
+    if (!grouped[m.type]) grouped[m.type] = [];
+    grouped[m.type].push(m);
+  });
+
+  let html = `
+    <div class="nutrition-card">
+      <h3>📊 この日の栄養摂取</h3>
+      <div class="nutrition-item">
+        <div class="nutrition-label"><span>🦴 Ca</span><span>${Math.round(totals.ca)}mg</span></div>
+        <div class="nutrition-bar-bg"><div class="nutrition-bar bar-ca" style="width:${Math.min(100,totals.ca/TARGETS.ca*100)}%"></div></div>
+      </div>
+      <div class="nutrition-item">
+        <div class="nutrition-label"><span>☀️ VitD</span><span>${totals.vd.toFixed(1)}μg</span></div>
+        <div class="nutrition-bar-bg"><div class="nutrition-bar bar-vd" style="width:${Math.min(100,totals.vd/TARGETS.vd*100)}%"></div></div>
+      </div>
+      <div class="nutrition-item">
+        <div class="nutrition-label"><span>💪 たんぱく質</span><span>${Math.round(totals.protein)}g</span></div>
+        <div class="nutrition-bar-bg"><div class="nutrition-bar bar-protein" style="width:${Math.min(100,totals.protein/TARGETS.protein*100)}%"></div></div>
+      </div>
+    </div>
+  `;
+
+  ['breakfast','lunch','dinner','snack'].forEach(type => {
+    if (!grouped[type]) return;
+    html += `<div class="meal-section"><h3>${typeNames[type]}</h3>`;
+    grouped[type].forEach(m => {
+      html += `<div class="meal-item"><div>
+        <div class="meal-name">${m.name}</div>
+        ${m.ca||m.vd||m.protein ? `<div class="meal-nutrition">Ca:${m.ca||0}mg VD:${m.vd||0}μg P:${m.protein||0}g</div>` : ''}
+      </div></div>`;
+    });
+    html += '</div>';
+  });
+
+  container.innerHTML = html;
+}
+
+function changeDate(delta) {
+  historyDate.setDate(historyDate.getDate() + delta);
+  renderHistory();
+}
+
+// 初期化
+document.getElementById('headerDate').textContent = formatDateJP(currentDate);
+loadTodayMeals();
+</script>
+</body>
+</html>
