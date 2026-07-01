@@ -8,7 +8,7 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif;
-  background: #f0f7f0
+  background: #f0f7f0;
   color: #333;
   max-width: 480px;
   margin: 0 auto;
@@ -301,6 +301,10 @@ header p { font-size: 13px; opacity: 0.9; }
   <div class="add-form">
     <h3>＋ 食事を追加</h3>
     <div class="form-row">
+      <label>日付（前日などの入れ忘れもOK）</label>
+      <input type="date" id="meal-date">
+    </div>
+    <div class="form-row">
       <label>食事の種類</label>
       <select id="meal-type">
         <option value="breakfast">🌅 朝食</option>
@@ -504,6 +508,8 @@ let unsubscribe = null;
 const TARGETS = { ca: 650, vd: 20, protein: 60 };
 
 function dateStr(d) {
+  // 日本時間（ローカル時間）の日付を使う。toISOString()はUTC基準のため
+  // 深夜0〜9時に入力した記録が前日扱いになってしまう不具合を防ぐ。
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
@@ -579,8 +585,10 @@ async function addMeal() {
   const ca = parseFloat(document.getElementById('meal-ca').value) || 0;
   const vd = parseFloat(document.getElementById('meal-vd').value) || 0;
   const protein = parseFloat(document.getElementById('meal-protein').value) || 0;
-  const today = dateStr(currentDate);
-  await db.collection('meals').doc(today).collection('items').add({
+  // 入力欄で選んだ日付に保存（前日などの入れ忘れにも対応）
+  const dateInput = document.getElementById('meal-date').value;
+  const targetDate = dateInput || dateStr(currentDate);
+  await db.collection('meals').doc(targetDate).collection('items').add({
     name, type, ca, vd, protein,
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   });
@@ -588,6 +596,10 @@ async function addMeal() {
   document.getElementById('meal-ca').value = '';
   document.getElementById('meal-vd').value = '';
   document.getElementById('meal-protein').value = '';
+  // 今日以外の日付に記録したときは、どこに入ったか分かるように知らせる
+  if (targetDate !== dateStr(currentDate)) {
+    alert(`${targetDate} に記録しました。過去の日付は「📅 履歴」タブで確認できます。`);
+  }
 }
 
 async function deleteMeal(id) {
@@ -711,6 +723,7 @@ function changeDate(delta) {
 
 // 初期化
 document.getElementById('headerDate').textContent = formatDateJP(currentDate);
+document.getElementById('meal-date').value = dateStr(currentDate);
 loadTodayMeals();
 </script>
 </body>
